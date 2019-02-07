@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import {HttpClient} from '@angular/common/http';
+import {HttpClient, HttpHeaders, HttpParams} from '@angular/common/http';
 import { RecipeService } from '../recipes/recipes.service';
 import { Recipe } from '../recipes/recipe.model';
 import { map } from "rxjs/operators"
@@ -8,19 +8,34 @@ import { auth } from 'firebase';
 
 @Injectable()
 export class DataStorageService {
-  constructor(private http:HttpClient ,
+  constructor(private httpClient:HttpClient ,
               private recipeService:RecipeService , 
               private authService:AuthService
               ){}
 
   storeRecipes(){
     const token =  this.authService.getToken()
-    return this.http.put('https://maria-project-presentation.firebaseio.com/recipes.json?auth=' + token , this.recipeService.getRecipes())
+    return this.httpClient.put('https://maria-project-presentation.firebaseio.com/recipes.json?auth=' + token , this.recipeService.getRecipes() , {
+      observe: 'body',
+      params : new HttpParams
+    })
   }
 
   getRecipes(){
     const token =  this.authService.getToken()
-    this.http.get('https://maria-project-presentation.firebaseio.com/recipes.json?auth=' + token)
+    this.httpClient.get<Recipe[]>('https://maria-project-presentation.firebaseio.com/recipes.json?auth=' + token)
+    .pipe(
+      map(
+        (recipes)=>{
+          for (let recipe of recipes){
+            if(!recipe['ingredients']){
+              recipe['ingredients'] = [];
+            }
+          }
+          return recipes 
+        }
+      )
+    )
     .subscribe(
       (response:any) =>{
         const recipes:Recipe[] = response
